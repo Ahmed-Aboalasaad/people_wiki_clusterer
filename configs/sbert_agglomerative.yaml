@@ -1,0 +1,52 @@
+# Experiment: Sentence Transformer embeddings + Agglomerative clustering
+# Run with: python run_experiment.py --config configs/sbert_agglomerative.yaml
+#
+# NOTES:
+#   - PCA and UMAP are the preferred reducers for Sentence Transformer embeddings.
+#   - Light preprocessing preserves sentence structure for the transformer.
+
+name: sbert_agglomerative
+data_path: data/people_wikipedia.csv
+seed: 42
+embedding_method: sentence_transformer
+
+sentence_transformer_embedding:
+  model_name: all-MiniLM-L6-v2
+  batch_size: 64
+  # Light preprocessing: preserve sentence structure
+  lowercase: false
+  remove_punctuation: false
+  remove_stopwords: false
+  lemmatize: false
+  token_limit: 256          # Limit tokens for memory/speed
+
+reduction:
+  method: pca               # Preferred for dense Sentence Transformer embeddings
+  n_components: 50
+  extra_params:
+    random_state: 42
+
+clustering:
+  algorithm: agglomerative
+  n_clusters: 15
+  seed: 42
+  extra_params:
+    linkage: ward
+    metric: euclidean
+
+evaluation:
+  compute_silhouette: true
+  compute_davies_bouldin: true
+  silhouette_sample_size: 5000
+
+visualization:
+  scatter_methods:
+    - pca
+    - umap
+  dendrogram_sample_size: 300
+  dpi: 150
+  figure_size: [12, 8]
+
+cache:
+  enabled: true
+  cache_dir: outputs/cache

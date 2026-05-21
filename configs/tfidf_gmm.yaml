@@ -1,0 +1,56 @@
+# Experiment: TF-IDF embeddings + GMM clustering
+# Run with: python run_experiment.py --config configs/tfidf_gmm.yaml
+#
+# NOTES:
+#   - GMM must NOT be applied on raw sparse TF-IDF.
+#     We reduce to a dense 50-D space with TruncatedSVD first.
+
+name: tfidf_gmm
+data_path: data/people_wikipedia.csv
+seed: 42
+embedding_method: tfidf
+
+preprocessing:
+  lowercase: true
+  remove_punctuation: true
+  remove_stopwords: true
+  lemmatize: true
+  token_limit: -1
+
+tfidf_embedding:
+  ngram_range: [1, 1]
+  max_features: 30000
+  min_df: 3
+  max_df: 0.90
+  lowercase: true
+
+reduction:
+  method: truncated_svd    # Densify TF-IDF before GMM
+  n_components: 50
+  extra_params:
+    random_state: 42
+
+clustering:
+  algorithm: gmm
+  n_clusters: 12
+  seed: 42
+  extra_params:
+    covariance_type: full
+    max_iter: 100
+
+evaluation:
+  compute_silhouette: true
+  compute_davies_bouldin: true
+  silhouette_sample_size: 5000
+
+visualization:
+  scatter_methods:
+    - pca
+    - tsne
+  dendrogram_sample_size: 300
+  dpi: 150
+  figure_size: [12, 8]
+
+cache:
+  enabled: true
+  cache_dir: outputs/cache

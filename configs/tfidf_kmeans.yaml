@@ -1,0 +1,56 @@
+# Experiment: TF-IDF embeddings + KMeans clustering
+# Run with: python run_experiment.py --config configs/tfidf_kmeans.yaml
+#
+# NOTES:
+#   - TruncatedSVD is the preferred reducer for TF-IDF (sparse) vectors.
+#   - Avoid using GMM directly on sparse TF-IDF without prior reduction.
+
+name: tfidf_kmeans
+data_path: data/people_wikipedia.csv
+seed: 42
+embedding_method: tfidf
+
+preprocessing:
+  lowercase: true
+  remove_punctuation: true
+  remove_stopwords: true
+  lemmatize: true
+  token_limit: -1          # -1 = use full biography
+
+tfidf_embedding:
+  ngram_range: [1, 2]
+  max_features: 50000
+  min_df: 2
+  max_df: 0.95
+  lowercase: true
+
+reduction:
+  method: truncated_svd    # Preferred for TF-IDF sparse matrices
+  n_components: 100
+  extra_params:
+    random_state: 42
+
+clustering:
+  algorithm: kmeans
+  n_clusters: 15
+  seed: 42
+  extra_params:
+    n_init: 10
+    max_iter: 300
+
+evaluation:
+  compute_silhouette: true
+  compute_davies_bouldin: true
+  silhouette_sample_size: 5000
+
+visualization:
+  scatter_methods:
+    - pca
+    - tsne
+  dendrogram_sample_size: 300
+  dpi: 150
+  figure_size: [12, 8]
+
+cache:
+  enabled: true
+  cache_dir: outputs/cache
