@@ -33,6 +33,7 @@ class TFIDFEmbedder(BaseEmbedder):
     def embed(self, texts: List[str]):
         """Fit and transform texts into a sparse TF-IDF matrix."""
         from sklearn.feature_extraction.text import TfidfVectorizer
+        from tqdm import tqdm
 
         self._vectoriser = TfidfVectorizer(
             ngram_range=self._config.ngram_range,
@@ -41,7 +42,9 @@ class TFIDFEmbedder(BaseEmbedder):
             max_df=self._config.max_df,
             lowercase=self._config.lowercase,
         )
-        matrix = self._vectoriser.fit_transform(texts)
+        with tqdm(total=1, desc="TF-IDF vectorisation", bar_format="{desc}: {elapsed} elapsed{postfix}") as pbar:
+            matrix = self._vectoriser.fit_transform(texts)
+            pbar.update(1)
         logger.info(
             "TF-IDF matrix shape: %s | non-zero: %d",
             matrix.shape,

@@ -21,6 +21,9 @@ wordcloud>=1.9.0
 # Config parsing
 pyyaml>=6.0
 
+# Progress bars
+tqdm>=4.65.0
+
 # Optional: GPU acceleration for sentence-transformers
 # torch>=2.0.0
 

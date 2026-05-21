@@ -47,11 +47,23 @@ class StandardPreprocessor(BasePreprocessor):
         self._load_resources()
         return self
 
-    def transform(self, texts: List[str]) -> List[str]:
-        """Apply the full preprocessing pipeline to each text."""
+    def transform(self, texts: List[str], batch_size: int = 500) -> List[str]:
+        """Apply the full preprocessing pipeline to each text.
+
+        Uses ``nlp.pipe`` for batched spaCy processing, which is significantly
+        faster than calling ``nlp(text)`` one document at a time.
+        """
         if self._nlp is None:
             self._load_resources()
-        results = [self._process_one(t) for t in texts]
+
+        # Pre-clean text before handing off to spaCy (faster per-doc work)
+        pre_cleaned = [self._pre_clean(t) for t in texts]
+
+        if self._nlp is not None:
+            results = self._batch_spacy(pre_cleaned, batch_size)
+        else:
+            results = [self._fallback_tokens(t) for t in pre_cleaned]
+
         logger.info("Preprocessed %d texts", len(results))
         return results
 
@@ -92,41 +104,49 @@ class StandardPreprocessor(BasePreprocessor):
             logger.warning("NLTK not available; stopword removal disabled.")
             return set()
 
-    def _process_one(self, text: str) -> str:
+    def _pre_clean(self, text: str) -> str:
+        """Fast string-level cleaning applied before spaCy."""
         if not text or not text.strip():
             return ""
-
         if self._config.lowercase:
             text = text.lower()
-
         if self._config.remove_punctuation:
             text = text.translate(str.maketrans("", "", string.punctuation))
             text = re.sub(r"\s+", " ", text).strip()
+        return text
 
-        # Token-level operations via spaCy (or simple split fallback)
-        if self._nlp is not None:
-            tokens = self._spacy_tokens(text)
-        else:
-            tokens = text.split()
+    def _batch_spacy(self, texts: List[str], batch_size: int) -> List[str]:
+        """Process all texts in batches using ``nlp.pipe`` (much faster)."""
+        from tqdm import tqdm
 
+        results = []
+        pipe = self._nlp.pipe(texts, batch_size=batch_size)
+        for doc in tqdm(pipe, total=len(texts), desc="Preprocessing", unit="doc", dynamic_ncols=True):
+            tokens = []
+            for token in doc:
+                if token.is_space:
+                    continue
+                word = token.lemma_ if self._config.lemmatize else token.text
+                tokens.append(word)
+
+            if self._config.remove_stopwords and self._stopwords:
+                tokens = [t for t in tokens if t not in self._stopwords]
+
+            if self._config.token_limit != -1:
+                tokens = tokens[: self._config.token_limit]
+
+            results.append(" ".join(tokens))
+
+        return results
+
+    def _fallback_tokens(self, text: str) -> str:
+        """Simple whitespace tokeniser used when spaCy is unavailable."""
+        tokens = text.split()
         if self._config.remove_stopwords and self._stopwords:
             tokens = [t for t in tokens if t not in self._stopwords]
-
-        # Token truncation
         if self._config.token_limit != -1:
             tokens = tokens[: self._config.token_limit]
-
         return " ".join(tokens)
-
-    def _spacy_tokens(self, text: str) -> List[str]:
-        doc = self._nlp(text)
-        tokens = []
-        for token in doc:
-            if token.is_space:
-                continue
-            lemma = token.lemma_ if self._config.lemmatize else token.text
-            tokens.append(lemma)
-        return tokens
 
 
 class LightPreprocessor(BasePreprocessor):
@@ -145,7 +165,11 @@ class LightPreprocessor(BasePreprocessor):
         return self  # stateless
 
     def transform(self, texts: List[str]) -> List[str]:
-        results = [self._process_one(t) for t in texts]
+        from tqdm import tqdm
+        results = [
+            self._process_one(t)
+            for t in tqdm(texts, desc="Preprocessing", unit="doc", dynamic_ncols=True)
+        ]
         logger.info("Light-preprocessed %d texts", len(results))
         return results
 

@@ -56,6 +56,7 @@ class PCAReducer(BaseReducer):
 
     def fit(self, embeddings: Any) -> "PCAReducer":
         from sklearn.decomposition import PCA
+        from tqdm import tqdm
 
         X = _to_dense(embeddings)
         self._model = PCA(
@@ -63,7 +64,9 @@ class PCAReducer(BaseReducer):
             random_state=self._config.extra_params.get("random_state", 42),
             **{k: v for k, v in self._config.extra_params.items() if k != "random_state"},
         )
-        self._model.fit(X)
+        with tqdm(total=1, desc="PCA reduction", bar_format="{desc}: {elapsed} elapsed{postfix}") as pbar:
+            self._model.fit(X)
+            pbar.update(1)
         explained = self._model.explained_variance_ratio_.sum()
         logger.info(
             "PCA fitted | n_components=%d | explained_variance=%.3f",
@@ -88,12 +91,15 @@ class TruncatedSVDReducer(BaseReducer):
 
     def fit(self, embeddings: Any) -> "TruncatedSVDReducer":
         from sklearn.decomposition import TruncatedSVD
+        from tqdm import tqdm
 
         self._model = TruncatedSVD(
             n_components=self._config.n_components,
             random_state=self._config.extra_params.get("random_state", 42),
         )
-        self._model.fit(embeddings)
+        with tqdm(total=1, desc="TruncatedSVD reduction", bar_format="{desc}: {elapsed} elapsed{postfix}") as pbar:
+            self._model.fit(embeddings)
+            pbar.update(1)
         explained = self._model.explained_variance_ratio_.sum()
         logger.info(
             "TruncatedSVD fitted | n_components=%d | explained_variance=%.3f",
@@ -124,6 +130,7 @@ class TSNEReducer(BaseReducer):
 
     def transform(self, embeddings: Any) -> np.ndarray:
         from sklearn.manifold import TSNE
+        from tqdm import tqdm
 
         X = _to_dense(embeddings)
         n_components = min(self._config.n_components, 3)  # t-SNE ≤ 3 in sklearn
@@ -133,7 +140,9 @@ class TSNEReducer(BaseReducer):
             perplexity=self._config.extra_params.get("perplexity", 30),
             n_iter=self._config.extra_params.get("n_iter", 1000),
         )
-        result = model.fit_transform(X)
+        with tqdm(total=1, desc="t-SNE projection", bar_format="{desc}: {elapsed} elapsed{postfix}") as pbar:
+            result = model.fit_transform(X)
+            pbar.update(1)
         logger.info("t-SNE projected to %dD | input shape: %s", n_components, X.shape)
         return result
 
@@ -153,6 +162,7 @@ class UMAPReducer(BaseReducer):
 
     def fit(self, embeddings: Any) -> "UMAPReducer":
         import umap
+        from tqdm import tqdm
 
         X = _to_dense(embeddings)
         self._model = umap.UMAP(
@@ -161,7 +171,9 @@ class UMAPReducer(BaseReducer):
             n_neighbors=self._config.extra_params.get("n_neighbors", 15),
             min_dist=self._config.extra_params.get("min_dist", 0.1),
         )
-        self._model.fit(X)
+        with tqdm(total=1, desc="UMAP reduction", bar_format="{desc}: {elapsed} elapsed{postfix}") as pbar:
+            self._model.fit(X)
+            pbar.update(1)
         logger.info(
             "UMAP fitted | n_components=%d | input shape: %s",
             self._config.n_components,

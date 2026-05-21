@@ -8,7 +8,7 @@ people biographies by profession and life-topic.
 ## Project Structure
 
 ```
-nlp_clustering/
+people_wiki_clusterer/
 │
 ├── data/                          # Place people_wikipedia.csv here
 ├── configs/                       # Experiment YAML files
@@ -54,8 +54,7 @@ python -m spacy download en_core_web_sm
 ### 2. Prepare data
 
 Place your CSV file at `data/people_wikipedia.csv`.  
-Required columns: `text`  
-Optional columns: `name`, `uri`
+
 
 ### 3. Run an experiment
 
